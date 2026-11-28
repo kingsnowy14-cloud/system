@@ -38,6 +38,7 @@ MANAGE_GUILD = 0x20
 ADMINISTRATOR = 0x8
 MODULE_OUTPUT_DIR = data_path("created_modules")
 MODULE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+WEBSITE_VERSION = "1.0.0"
 
 app = Flask("ironwolf_dashboard")
 app.secret_key = os.getenv("DASHBOARD_SECRET_KEY") or secrets.token_hex(32)
@@ -860,7 +861,7 @@ def _page(title, body):
     )
     is_site_admin = str(session.get("user_id", "")) == "1493110334280564807"
     if is_site_admin and not team_only_page:
-        nav = nav.replace('</nav>', '<a class="nav-server" href="/admin/website-statistics">📊 Website stats</a></nav>')
+        nav = nav.replace('</nav>', '<a class="nav-server" href="/admin/website-statistics">📊 Website stats</a><a class="nav-server" href="/admin/system-modules">🧩 System modules</a></nav>')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)} · IronWolf</title>
@@ -1302,7 +1303,7 @@ code{{border-color:rgba(100,185,219,.17)!important;background:#07111d!important;
   }},{{passive:true}});
  }}
 }})();
-</script></body></html>"""
+</script><footer style="max-width:1240px;margin:0 auto;padding:0 24px 24px;text-align:center;color:#718096;font-size:12px;">IronWolf Website v{WEBSITE_VERSION}</footer></body></html>"""
 
 
 
@@ -2097,6 +2098,20 @@ def website_statistics():
         '<p class="muted">Named visit records are created only for users signed in with Discord. Visitors who are not signed in are not identified. Times are UTC.</p></section>'
     )
     return _render("Website Statistics", body)
+
+
+@app.route("/admin/system-modules")
+def admin_system_modules():
+    """Private planning area for unreleased IronWolf modules and ideas."""
+    if str(session.get("user_id", "")) != "1493110334280564807":
+        abort(403)
+    body = (
+        '<section class="card"><h1>🧩 Interne Systemmodule &amp; Ideen</h1>'
+        '<p>Dieser Bereich ist ausschließlich für den Website-Admin sichtbar. Neue Module, Konzepte und geplante Funktionen bleiben hier intern, bis sie ausdrücklich zur Veröffentlichung freigegeben werden.</p>'
+        '<div class="notice">Noch keine unveröffentlichten Module eingetragen.</div>'
+        '<p class="muted">Bestehende Website-Module bleiben öffentlich erreichbar. Premium-Verwaltung bleibt separat geschützt.</p></section>'
+    )
+    return _render("Interne Systemmodule", body)
 
 
 @app.route("/privacy")
