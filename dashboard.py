@@ -2740,10 +2740,17 @@ def server_promotion_directory():
         if not permitted or guild is None:
             abort(403, "You need Manage Server permission, and IronWolf must already be on that server.")
         # Pull the canonical Discord guild profile; OAuth and gateway data are fallbacks.
+        with _SERVER_PROMOTION_LOCK:
+            records = _server_promotion_read()
+            if isinstance(records.get(guild_id), dict):
+                return redirect(url_for("server_promotion_directory", duplicate="1"))
         profile_snapshot = _server_promotion_discord_profile(guild_id, guild, oauth_guild, invite_url)
         with _SERVER_PROMOTION_LOCK:
             records = _server_promotion_read()
-            existing = records.get(guild_id, {})
+            # Re-check while holding the write lock so simultaneous submissions cannot overwrite each other.
+            if isinstance(records.get(guild_id), dict):
+                return redirect(url_for("server_promotion_directory", duplicate="1"))
+            existing = {}
             records[guild_id] = {
                 "guild_id": guild_id, "guild_name": guild.name, "invite_url": invite_url,
                 "advert_text": advert_text, "category": category, "profile": profile_snapshot,
@@ -2779,7 +2786,6 @@ def server_promotion_directory():
         if guild is None:
             continue
         listed.append((str(guild_id), record, guild))
-    listed.sort(key=lambda entry: (0 if entry[0] == _SERVER_PROMOTION_PINNED_GUILD else 1, entry[1].get("registered_at", "")))
 
     # Refresh every advertised server from Discord's canonical guild endpoint.
     # Cache snapshots for ten minutes to avoid repeated API calls per page view.
@@ -2808,6 +2814,18 @@ def server_promotion_directory():
     if profiles_changed:
         with _SERVER_PROMOTION_LOCK:
             _server_promotion_write(records)
+
+    def _promotion_member_total(entry):
+        record = entry[1]
+        guild = entry[2]
+        profile = record.get("profile") if isinstance(record.get("profile"), dict) else {}
+        try:
+            return int(profile.get("member_count") or getattr(guild, "member_count", 0) or 0)
+        except (TypeError, ValueError):
+            return int(getattr(guild, "member_count", 0) or 0)
+
+    # Keep the requested server pinned; rank every other listing by member count.
+    listed.sort(key=lambda entry: (0 if entry[0] == _SERVER_PROMOTION_PINNED_GUILD else 1, -_promotion_member_total(entry)))
 
     cards = []
     for guild_id, record, guild in listed:
@@ -2900,7 +2918,7 @@ def server_promotion_directory():
     options = ['<option value="">Choose a server…</option>']
     for guild_id, guild_name in sorted(manageable, key=lambda item: item[1].casefold()):
         options.append('<option value="' + html.escape(guild_id, quote=True) + '">' + html.escape(guild_name) + '</option>')
-    notice = '<div class="notice">Your server has been added to the directory.</div>' if request.args.get("saved") == "1" else ('<div class="notice">Your server has been removed from the directory.</div>' if request.args.get("deleted") == "1" else "")
+    notice = ('<div class="notice">This server is already published. Remove its listing first before publishing it again.</div>' if request.args.get("duplicate") == "1" else ('<div class="notice">Your server has been added to the directory.</div>' if request.args.get("saved") == "1" else ('<div class="notice">Your server has been removed from the directory. You can publish it again now.</div>' if request.args.get("deleted") == "1" else "")))
     if manageable:
         add_form = (
             '<section class="card promotion-add"><div class="promotion-form-heading"><span class="promotion-form-icon">✦</span><div><span class="promotion-kicker">SERVER SUBMISSION</span><h2>List your community</h2><p class="muted">Your real Discord profile, icon and banner are imported automatically.</p></div></div>'
