@@ -11897,31 +11897,41 @@ At **IRONWOLF**, we turn your ideas into reality. Whether you're starting a new 
 🎨 Professional server design and setup
 🤖 Custom Discord bots built around your ideas
 ⚙️ Individual bot features and commands
-🔒 Advanced roles, permissions & security
-🎟️ Ticket systems and support automation
+🔐 Advanced roles, permissions & security
+🎫 Ticket systems and support automation
 🛡️ Moderation and server management
-📹 Our own **KINGRECORDING** system
+🎥 Our own **KINGRECORDING** system
 💡 Your ideas – our development!
 
 ## 🤖 MEET OUR BOTS
 
 🐺 **IRONWOLF** – Your Discord server companion
-[➜ Invite IRONWOLF to your server](https://discord.com/oauth2/authorize?client_id=1558547445187743804)
+🔗 [➜ Invite IRONWOLF to your server](https://discord.com/oauth2/authorize?client_id=1558547445187743804)
 
-📹 **KINGRECORDING** – Our dedicated recording bot
-[➜ Invite KINGRECORDING to your server](https://discord.com/oauth2/authorize?client_id=1569059418711003267)
+🎬 **KINGRECORDING** – Our dedicated recording bot
+🔗 [➜ Invite KINGRECORDING to your server](https://discord.com/oauth2/authorize?client_id=1569059418711003267)
 
-## 📹 OUR RECORDING SYSTEM
+## 🎥 OUR RECORDING SYSTEM
 
 Want to check out our own recording platform?
 
-[➜ Visit KINGRECORDING](https://kingrecording.up.railway.app)
+🌐 [➜ Visit KINGRECORDING](https://kingrecording.up.railway.app)
 
-## 🌐 JOIN OUR COMMUNITY
+## 📢 PROMOTE YOUR DISCORD SERVER!
+
+Want to attract more members and make your Discord community more visible?
+
+With our **IRONWOLF Server Promotion System**, you can promote your own Discord server and reach a wider audience!
+
+🚀 [➜ Promote Your Discord Server Here](https://ironwolf-bot.up.railway.app/server-promotion)
+
+📈 **Give your community the visibility it deserves!**
+
+## 🌍 JOIN OUR COMMUNITY
 
 Have questions, need support, or want to request a custom project?
 
-[➜ Join the IRONWOLF Discord Community](https://discord.gg/KDKs5WPgaC)
+💬 [➜ Join the IRONWOLF Discord Community](https://discord.gg/KDKs5WPgaC)
 
 🐺 **YOUR SERVER. YOUR IDEAS. OUR TECHNOLOGY.**
 
