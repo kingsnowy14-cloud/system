@@ -2813,17 +2813,24 @@ def server_promotion_directory():
     for guild_id, record, guild in listed:
         profile = record.get("profile") if isinstance(record.get("profile"), dict) else {}
         # Prefer the refreshed canonical profile; use gateway and OAuth data as fallbacks.
-        live_icon = guild.icon.url if getattr(guild, "icon", None) else ""
+        # The connected Discord guild object is the freshest source for the icon.
+        # Older saved snapshots can contain an outdated CDN URL, so never let them
+        # override the current gateway asset for any advertised server.
+        live_guild_icon = getattr(guild, "icon", None)
+        live_icon = live_guild_icon.url if live_guild_icon else ""
+        live_icon_hash = str(getattr(live_guild_icon, "key", "") or "").strip()
         oauth_profile = oauth_by_id.get(guild_id, {})
         oauth_icon_hash = str(oauth_profile.get("icon") or "").strip()
         profile_icon_hash = str(profile.get("icon_hash") or "").strip()
-        icon_hash = profile_icon_hash or oauth_icon_hash
+        icon_hash = live_icon_hash or profile_icon_hash or oauth_icon_hash
         icon_ext = "gif" if icon_hash.startswith("a_") else "png"
         hash_icon_url = (
             "https://cdn.discordapp.com/icons/" + guild_id + "/" + icon_hash + "." + icon_ext + "?size=256"
             if re.fullmatch(r"[A-Za-z0-9_]+", icon_hash) else ""
         )
-        icon = str(profile.get("icon_url") or hash_icon_url or live_icon or "")
+        # Prefer the live Asset URL (discord.py chooses the correct CDN format),
+        # then fall back to the refreshed snapshot/hash for older Discord data.
+        icon = str(live_icon or profile.get("icon_url") or hash_icon_url or "")
         icon_fallback = (
             "https://media.discordapp.net/icons/" + guild_id + "/" + icon_hash + "." + icon_ext + "?size=256"
             if re.fullmatch(r"[A-Za-z0-9_]+", icon_hash) else ""
