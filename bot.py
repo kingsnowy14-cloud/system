@@ -79,6 +79,7 @@ _historical_main_server_invite_task = None
 _mainserver_announcement_task = None
 _github_backup_task = None
 _ironwolf_promo_task = None
+_ironwolf_promotion_dm_task = None
 
 
 async def dashboard_command_enabled(guild_id, key):
@@ -7383,6 +7384,114 @@ async def send_historical_main_server_invites():
             print(f"[MAIN SERVER DM] Unexpected error for guild {guild.id}: {type(exc).__name__}: {exc}")
         await asyncio.sleep(1)
 
+_IRONWOLF_SERVER_PROMOTION_DM = """🐺 **IRONWOLF – YOUR SERVER DESERVES TO BE SEEN!**
+
+Thanks for adding IronWolf to your Discord server!
+
+Want to attract more members and get your community noticed?
+
+🚀 **Promote your server on our new Server Promotion page!**
+
+🌐 Submit your server here:
+https://ironwolf-bot.up.railway.app/server-promotion
+
+✨ Get more visibility, reach new members, and grow your community!
+
+Thank you for choosing IronWolf! 🐺"""
+
+
+async def send_historical_server_promotion_dms():
+    """Send one launch campaign DM to each distinct inviter, at most 17 times total."""
+    campaign_key = "ironwolf_server_promotion_dm_campaign"
+    state = data.setdefault(campaign_key, {})
+    if not isinstance(state, dict):
+        state = {}
+        data[campaign_key] = state
+    if state.get("completed"):
+        print("[SERVER PROMOTION DM] One-time campaign already completed; no messages will be sent.", flush=True)
+        return
+
+    attempted = state.setdefault("attempted_user_ids", [])
+    delivered = state.setdefault("delivered_user_ids", [])
+    attempted = {str(user_id) for user_id in attempted}
+    delivered = {str(user_id) for user_id in delivered}
+    guilds = sorted(list(bot.guilds), key=lambda item: item.id)
+    print(
+        f"[SERVER PROMOTION DM] Starting one-time campaign across {len(guilds)} current servers; "
+        f"{len(attempted)}/17 recipient slots already reserved.",
+        flush=True,
+    )
+
+    for guild in guilds:
+        if len(attempted) >= 17 or len(delivered) >= 17:
+            break
+        inviter = None
+        try:
+            async for entry in guild.audit_logs(limit=100, action=discord.AuditLogAction.bot_add):
+                target = getattr(entry, "target", None)
+                target_id = getattr(target, "id", None) or getattr(entry, "target_id", None)
+                actor = getattr(entry, "user", None)
+                if bot.user and target_id == bot.user.id and actor and not getattr(actor, "bot", False):
+                    inviter = actor
+                    break
+        except (discord.Forbidden, discord.HTTPException) as exc:
+            print(
+                f"[SERVER PROMOTION DM] Cannot inspect audit log for guild {guild.id}; skipping: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            continue
+
+        if inviter is None:
+            print(f"[SERVER PROMOTION DM] Original inviter unavailable for guild {guild.id}; skipping.", flush=True)
+            continue
+
+        user_key = str(inviter.id)
+        if user_key in attempted or user_key in delivered:
+            print(
+                f"[SERVER PROMOTION DM] Inviter {inviter.id} already handled; no duplicate DM for guild {guild.id}.",
+                flush=True,
+            )
+            continue
+
+        # Reserve a campaign slot before sending. This prevents duplicate delivery
+        # if the process restarts immediately after Discord accepts the DM.
+        attempted.add(user_key)
+        state["attempted_user_ids"] = sorted(attempted)
+        state["started_at"] = state.get("started_at") or datetime.now(timezone.utc).isoformat()
+        save_json(DATA_FILE, data)
+
+        try:
+            await inviter.send(_IRONWOLF_SERVER_PROMOTION_DM)
+        except (discord.Forbidden, discord.HTTPException) as exc:
+            print(
+                f"[SERVER PROMOTION DM] Could not DM inviter {inviter.id} for guild {guild.id}: "
+                f"{type(exc).__name__}: {exc}; slot remains reserved to prevent retries.",
+                flush=True,
+            )
+        else:
+            delivered.add(user_key)
+            state["delivered_user_ids"] = sorted(delivered)
+            state["last_delivery_at"] = datetime.now(timezone.utc).isoformat()
+            save_json(DATA_FILE, data)
+            print(
+                f"[SERVER PROMOTION DM] Delivered one-time promotion DM to inviter {inviter.id} "
+                f"for guild {guild.id} ({len(delivered)}/17 successful).",
+                flush=True,
+            )
+        await asyncio.sleep(1)
+
+    state["completed"] = True
+    state["completed_at"] = datetime.now(timezone.utc).isoformat()
+    state["attempt_count"] = len(attempted)
+    state["delivered_count"] = len(delivered)
+    save_json(DATA_FILE, data)
+    print(
+        f"[SERVER PROMOTION DM] One-time campaign finished: {len(delivered)} DMs delivered, "
+        f"{len(attempted)} unique recipient slots used. It will not run again.",
+        flush=True,
+    )
+
 
 async def ensure_ironwolf_private_role(guild: discord.Guild):
     """Ensure existing and newly joined guilds have one IronWolf role assigned only to the bot."""
@@ -10910,6 +11019,12 @@ async def on_ready():
         _historical_main_server_invite_task = asyncio.create_task(
             send_historical_main_server_invites(),
             name="historical-main-server-inviter-dms",
+        )
+    global _ironwolf_promotion_dm_task
+    if _ironwolf_promotion_dm_task is None or _ironwolf_promotion_dm_task.done():
+        _ironwolf_promotion_dm_task = asyncio.create_task(
+            send_historical_server_promotion_dms(),
+            name="one-time-server-promotion-inviter-dms",
         )
     global _automation_worker_task
     global _team_ban_expiry_task
